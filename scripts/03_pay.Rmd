@@ -1,0 +1,51 @@
+---
+title: "pay"
+author: "Martin Monkman"
+date: "04/06/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# packages
+library(tidyverse)
+library(lubridate)
+library(magrittr)
+
+library(glue)
+library(here)
+
+```
+
+## pay table
+
+Based on "df_HR_transaction.csv", create table with salary and bonus paid 
+
+
+* table `df_HR_pay_2021q4`;  file saved as "df_HR_pay_2021q4.csv"
+
+
+```{r}
+df_HR_transaction_dates <- read_rds(here("data", "df_HR_transaction_dates.rds"))
+```
+
+
+salary:
+
+* grid on `occ_grp_num` (A-E) and `occ_step` (1-3)
+
+* assign values as percentage higher than previous step
+
+
+bonus:
+
+* based on years of service
+
+  - no bonus if in first year
+
+  - flat amount if in 2nd or 3rd year, 4+ gets same flat amount plus % based on number of years
+
+
+
+df_HR_pay_2021q4.csv

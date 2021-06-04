@@ -1,0 +1,434 @@
+---
+title: "hr staff turnover"
+output: html_document
+---
+
+Scripts to generate a fake HR relational database
+
+
+## The scenario: 
+
+The fictional wholesale company, CR25 (for "Classic Rock 25"), has 999 employees. The data files cover the period from 2010-01-01, when the company first opened its doors, through to 2020-12-31. 
+
+
+### employee characteristics
+
+The CSV file "df_HR_main.csv" contains the following variables:
+
+* emp_id -- a unique identification number for each employee
+
+* start_date -- the date the employee started their employment with CR25
+
+* four variables based on the designated groups specified in Canada's [_Employment Equity Act_](https://laws-lois.justice.gc.ca/eng/acts/E-5.401/), where "TRUE" indicates the the employee is a member of that group
+
+  - women
+  
+  - Aboriginal peoples
+  
+  - persons with disabilities
+  
+  - members of visible minorities (meaning "persons, other than Aboriginal peoples, who are non-Caucasian in race or non-white in colour").
+
+
+### transaction history
+
+Some of the employees in this company have been with the company since it started on 2010-01-01, and others started recently.
+
+There are 5 occupations in the company, labelled A (for Apprentice) to E (for Executive), and each has more responsibility (and therefore pay) than the one below. Employees can start at any one of the occupations, and are eligible for a promotion after 90 days on the job (but some people take longer than that). 
+
+Each occupation has 3 steps (numbered 1 to 3); everyone starts at step 1, and moves to step 2 after 1 year in that occupation, and step 3 after 2 years. 
+
+The second CSV file "df_HR_transaction.csv" contains the promotion history for each employee. The variables are:
+
+* emp_id -- a unique identification number for each employee
+
+* transaction_num -- the hiring and promotion event categories
+
+* transaction_date -- the date of the hiring and promotion event
+
+* occupation -- the five occupation categories
+
+* occ_step -- the annual increment steps
+
+
+(The code for the creation of these data files is here:  https://github.com/MonkmanMH/hr-example-data)
+
+
+
+
+```{r setup}
+
+library(tidyverse)
+library(glue)
+library(lubridate)
+library(magrittr)
+```
+
+
+## employee frame
+
+establish frame with employee ID
+
+```{r}
+
+df_HR <- as_tibble(nums <- sprintf('%0.3d', 1:999)) 
+  
+df_HR <-
+df_HR %>% mutate(emp_id = as.character(glue("ID{value}"))) %>% 
+  select(emp_id)
+
+
+df_HR
+
+```
+
+start date
+
+function from https://stackoverflow.com/questions/21502332/generating-random-dates/21502397#21502397
+
+```{r date_function}
+
+rdate <- function(n = 1,
+                  min = paste0(format(Sys.Date(), '%Y'), '-01-01'),
+                  max = lubridate::today(),
+                  sort = TRUE) {
+
+  dates <- sample(seq(as.Date(min), as.Date(max), by = "day"), n, replace = TRUE)
+  if (sort == TRUE) {
+    sort(dates)
+  } else {
+    dates
+  }
+
+}
+
+```
+
+
+```{r}
+set.seed(42)
+
+#rdate(n = 10, max = "2020-11-22")
+
+df_HR <- 
+  df_HR %>% 
+  mutate(
+#    date_of_birth = rdate(n = n(), min = "1960-01-01", max = "2000-01-01", sort = FALSE),
+    start_date = rdate(n = n(), min = "2010-01-01")
+    )
+
+df_HR
+
+```
+
+equity group
+
+```{r}
+
+set.seed(42)
+
+df_HR_main <- df_HR %>% 
+  mutate(equity_woman = sample(c(TRUE, FALSE), size = n(), prob = c(.5, .5), replace = TRUE),
+         equity_visible_minority = sample(c(TRUE, FALSE), size = n(), prob = c(.25, .75), replace = TRUE),
+         equity_aboriginal = sample(c(TRUE, FALSE), size = n(), prob = c(.10, .90), replace = TRUE),
+         equity_disability = sample(c(TRUE, FALSE), size = n(), prob = c(.15, .85), replace = TRUE)) 
+
+df_HR_main
+
+df_HR_main %>% 
+  group_by(equity_visible_minority, equity_aboriginal) %>% 
+  tally()
+
+write_csv(df_HR_main, "df_HR_main.csv")
+
+```
+
+
+---
+
+## transaction table
+
+To base table, add three rows with transaction dates then pivot
+
+Note: some individuals will have only one transaction (start date), others will have two, and some will have three
+
+
+```{r}
+
+# test runs to work out how to add random amount to existing date without going past today
+
+var_date = ymd("2019-01-01")
+
+today() - var_date
+
+# use today - variable date to get number of days, then 
+# multiply by a random value from the uniform distribution (runif) to get 
+# a fractional number of days to add
+var_date + ((today() - var_date) * runif(1))
+
+```
+
+
+```{r}
+# test runs
+df_HR %>% 
+  mutate(trans1 = (start_date + ((today() - start_date) * runif(n())))) %>% 
+  mutate(trans_time = trans1 - start_date,
+         service = today() - start_date,
+         as.integer(trans_time) / as.integer(service))
+
+df_HR %>% 
+  mutate(trans1 = (start_date + ((today() - start_date) * runif(n())))) %>% 
+  mutate(trans2 = (trans1 + ((today() - trans1) * runif(n())))) %>% 
+  mutate(trans3 = (trans2 + ((today() - trans2) * runif(n())))) %>% 
+    mutate(trans_time = trans3 - trans2,
+         service = today() - start_date,
+         as.integer(trans_time) / as.integer(service))
+
+df_HR %>% 
+  mutate(trans1 = (start_date + ((today() - start_date) * runif(n())))) %>% 
+  mutate(trans2 = (trans1 + ((today() - trans1) * runif(n())))) %>% 
+  mutate(trans3 = (trans2 + ((today() - trans2) * runif(n())))) %>% 
+    mutate(trans_time = trans3 - trans2,
+         service = today() - start_date,
+         as.integer(trans_time) / as.integer(service))
+
+```
+
+finals
+
+```{r}
+set.seed(42)
+
+df_HR_transaction_dates <- 
+  df_HR %>% 
+  mutate(trans1 = (start_date + ((today() - start_date) * runif(n())))) %>% 
+  mutate(trans2 = (trans1 + ((today() - trans1) * runif(n())))) 
+#%>% 
+#  mutate(trans3 = (trans2 + ((today() - trans2) * runif(n()))))
+
+df_HR_transaction_dates
+
+# remove small gaps by converting to NA
+
+df_HR_transaction_dates <-
+df_HR_transaction_dates %>% 
+  # trans1 
+  mutate(
+    trans1 = case_when(
+             as.integer(trans1 - start_date) < 90 ~ NA_Date_,
+             TRUE ~ trans1)
+  ) %>% 
+  # trans2 
+  mutate(
+    trans2 = case_when(
+             is.na(trans1) ~ NA_Date_,
+             as.integer(trans2 - trans1) < 90 ~ NA_Date_,
+             TRUE ~ trans2)
+  ) 
+#%>% 
+  # trans3
+#  mutate(
+#    trans3 = case_when(
+#             is.na(trans2) ~ NA_Date_,
+#             as.integer(trans3 - trans2) < 90 ~ NA_Date_,
+#             TRUE ~ trans3)
+#  ) 
+
+df_HR_transaction_dates  
+
+```
+
+pivot longer
+
+```{r}
+
+df_HR_transaction_dates %<>% 
+  pivot_longer(!emp_id, names_to = "transaction_num", values_to = "transaction_date")
+
+
+df_HR_transaction_dates
+
+```
+
+
+
+
+### occupational group
+
+
+occupation -- start with transaction 2 -- if !na, then sample from 3 - 4 - 5 (so they could have entered as 1 - 2 - 3 and got 2 promotions)
+
+then work backwards
+
+```{r}
+df_HR_transaction_dates <- df_HR_transaction_dates %>% 
+  mutate(
+    occ_grp_num = case_when(
+      # fill NA
+      transaction_num == "trans2" & is.na(transaction_date) ~ NA_integer_,
+      transaction_num == "trans1" & is.na(transaction_date) ~ NA_integer_,
+      # fill trans2
+      transaction_num == "trans2" ~ sample(c(3L, 4L, 5L), 
+                                           size = n(), replace = TRUE),
+      TRUE ~ 991L)
+  )
+
+df_HR_transaction_dates <- df_HR_transaction_dates %>% 
+  mutate(
+    # fill trans1
+    occ_grp_num = case_when(
+      is.na(occ_grp_num) ~ NA_integer_,
+      occ_grp_num <= 5 ~ occ_grp_num,
+      transaction_num == "trans1" & is.na(lead(occ_grp_num, 1)) ~ sample(c(2L, 3L, 4L, 5L), 
+                                                                    size = n(), replace = TRUE),
+      transaction_num == "trans1" ~ lead(occ_grp_num, 1) - 1L,
+      TRUE ~ 991L
+  )
+  )
+
+df_HR_transaction_dates <- 
+  df_HR_transaction_dates %>% 
+  mutate(
+    # fill start
+    occ_grp_num = case_when(
+      is.na(occ_grp_num) ~ NA_integer_,
+      occ_grp_num <= 5 ~ occ_grp_num,
+      transaction_num == "start_date" & is.na(lead(occ_grp_num, 1)) ~ sample(c(1L, 2L, 3L, 4L, 5L), 
+                                                                    size = n(), replace = TRUE),
+      transaction_num == "start_date" ~ lead(occ_grp_num, 1) - 1L,
+      TRUE ~ 999L
+  )
+  )
+
+  
+
+```
+
+recode to alphabetical
+
+```{r}
+df_HR_transaction_dates <-
+  df_HR_transaction_dates %>% 
+  mutate(
+    occupation = case_when(
+      is.na(occ_grp_num) ~ NA_character_,
+      occ_grp_num == 1 ~ "A",
+      occ_grp_num == 2 ~ "B",
+      occ_grp_num == 3 ~ "C",
+      occ_grp_num == 4 ~ "D",
+      occ_grp_num == 5 ~ "E",
+      TRUE ~ "999"
+  )
+  )
+
+df_HR_transaction_dates
+
+```  
+
+quick tally of total
+
+```{r}
+
+df_HR_transaction_dates %>% 
+  group_by(transaction_num, occupation) %>% 
+  tally()
+
+```
+
+
+
+for steps, today - transaction 2 > 2 * 365 = 3 (i.e. two years past, gone to step 3), 
+
+
+```{r}
+
+df_HR_transaction_dates <-
+df_HR_transaction_dates %>% 
+  mutate(
+    yr_in_occ = case_when(
+      is.na(transaction_date) ~ NA_real_,
+      transaction_num == "trans2" ~ 
+        as.numeric(interval(transaction_date, today()) %/% years(1)) + 1,
+      
+      (transaction_num == "trans1" | transaction_num == "start_date") 
+      & is.na(lead(transaction_date, 1)) ~ 
+        as.numeric(interval(transaction_date, today()) %/% years(1)) + 1,
+
+      transaction_num == "trans1" | transaction_num == "start_date" ~
+        as.numeric(interval(transaction_date, lead(transaction_date, 1)) %/% years(1)) + 1,
+
+            TRUE ~ 999
+  ))
+
+df_HR_transaction_dates
+
+tail(df_HR_transaction_dates)
+
+```
+
+
+some quick tallys
+
+```{r}
+
+df_HR_transaction_dates %>% 
+  group_by(occupation) %>% 
+  summarise(avg_years = mean(yr_in_occ))
+
+```
+
+# recode to steps
+
+```{r}
+df_HR_transaction_dates <-
+  df_HR_transaction_dates %>% 
+  mutate(
+    occ_step = case_when(
+      is.na(yr_in_occ) ~ NA_integer_,
+      yr_in_occ >= 3 ~ 3L,
+      yr_in_occ == 2 ~ 2L,
+      yr_in_occ == 1 ~ 1L,
+      TRUE ~ NA_integer_
+  )
+  )
+
+df_HR_transaction_dates
+
+```  
+
+
+select columns
+
+```{r}
+df_HR_transaction <-
+df_HR_transaction_dates %>% 
+  select(-c(occ_grp_num, yr_in_occ))
+
+df_HR_transaction
+
+```
+
+
+
+
+write file
+
+```{r}
+  
+write_csv(df_HR_transaction, "df_HR_transaction.csv")
+
+```
+
+
+
+```{r}
+# rounding date differences
+
+(today() - ymd("2019-11-22"))
+
+interval(ymd("2018-11-22"), today()) %/% years(1)
+
+
+```
+

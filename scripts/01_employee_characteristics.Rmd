@@ -1,0 +1,127 @@
+---
+title: "employee characteristics"
+author: "Martin Monkman"
+date: "04/06/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# packages
+library(tidyverse)
+library(lubridate)
+
+library(glue)
+library(here)
+```
+
+## Employee characteristics
+
+
+The CSV file "df_HR_main.csv" contains the following variables:
+
+* emp_id -- a unique identification number for each employee
+
+* start_date -- the date the employee started their employment with CR25
+
+* four variables based on the designated groups specified in Canada's [_Employment Equity Act_](https://laws-lois.justice.gc.ca/eng/acts/E-5.401/), where "TRUE" indicates the the employee is a member of that group
+
+  - women
+  
+  - Aboriginal peoples
+  
+  - persons with disabilities
+  
+  - members of visible minorities (meaning "persons, other than Aboriginal peoples, who are non-Caucasian in race or non-white in colour").
+
+
+
+## employee frame
+
+establish frame with employee ID
+
+```{r}
+
+df_HR <- as_tibble(nums <- sprintf('%0.3d', 1:999)) 
+  
+df_HR <-
+df_HR %>% mutate(emp_id = as.character(glue("ID{value}"))) %>% 
+  select(emp_id)
+
+
+df_HR
+
+```
+
+start date
+
+function from https://stackoverflow.com/questions/21502332/generating-random-dates/21502397#21502397
+
+```{r date_function}
+
+rdate <- function(n = 1,
+                  min = paste0(format(Sys.Date(), '%Y'), '-01-01'),
+                  max = lubridate::today(),
+                  sort = TRUE) {
+
+  dates <- sample(seq(as.Date(min), as.Date(max), by = "day"), n, replace = TRUE)
+  if (sort == TRUE) {
+    sort(dates)
+  } else {
+    dates
+  }
+
+}
+
+```
+
+
+```{r}
+set.seed(42)
+
+#rdate(n = 10, max = "2020-11-22")
+
+df_HR <- 
+  df_HR %>% 
+  mutate(
+#    date_of_birth = rdate(n = n(), min = "1960-01-01", max = "2000-01-01", sort = FALSE),
+    start_date = rdate(n = n(), min = "2010-01-01", max = "2020-12-31")
+    )
+
+df_HR
+
+
+# write base version of HR frame with employee ID and start date
+write_rds(df_HR, here("data", "df_HR.rds"))
+
+```
+
+## assign equity group
+
+women: 50% 
+visible minority: 25%
+aboriginal: 10%
+disability: 15%
+
+```{r}
+
+set.seed(42)
+
+df_HR_main <- df_HR %>% 
+  mutate(equity_woman = sample(c(TRUE, FALSE), size = n(), prob = c(.5, .5), replace = TRUE),
+         equity_visible_minority = sample(c(TRUE, FALSE), size = n(), prob = c(.25, .75), replace = TRUE),
+         equity_aboriginal = sample(c(TRUE, FALSE), size = n(), prob = c(.10, .90), replace = TRUE),
+         equity_disability = sample(c(TRUE, FALSE), size = n(), prob = c(.15, .85), replace = TRUE)) 
+
+df_HR_main
+
+df_HR_main %>% 
+  group_by(equity_visible_minority, equity_aboriginal) %>% 
+  tally()
+
+write_csv(df_HR_main, here("data", "df_HR_main.csv"))
+
+```
+
+
