@@ -26,5 +26,7 @@ df_HR_survey_2020.sav -- responses to employee survey fielded in 2020-12
 
 ## Tools for generation
 
-[randomNames](https://CRAN.R-project.org/package=randomNames)
+[{randomNames}](https://CRAN.R-project.org/package=randomNames)
+
+[{RecordLinkage}](https://CRAN.R-project.org/package=RecordLinkage)
 
