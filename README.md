@@ -1,4 +1,4 @@
-# hr-example-data
+# example-data-CR25
 
 ## The scenario: 
 
