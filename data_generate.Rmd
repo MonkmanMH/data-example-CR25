@@ -89,6 +89,8 @@ function from https://stackoverflow.com/questions/21502332/generating-random-dat
 ```{r date_function}
 
 rdate <- function(n = 1,
+#                  min = paste0(format(Sys.Date(), '%Y'), '-01-01'),
+#                  max = lubridate::today(),
                   min = paste0(format(Sys.Date(), '%Y'), '-01-01'),
                   max = lubridate::today(),
                   sort = TRUE) {
@@ -113,33 +115,34 @@ set.seed(42)
 df_HR <- 
   df_HR %>% 
   mutate(
-#    date_of_birth = rdate(n = n(), min = "1960-01-01", max = "2000-01-01", sort = FALSE),
-    start_date = rdate(n = n(), min = "2010-01-01")
+    date_of_birth = rdate(n = n(), min = "1955-01-01", max = "2000-01-01", sort = FALSE),
+    age_this_year = date_of_birth %--% ymd(20200101) %/% years(1),
+    start_date = rdate(n = n(), min = "2010-01-01", max = "2020-01-01")
     )
 
 df_HR
 
 ```
 
-equity group
+training
 
 ```{r}
 
 set.seed(42)
 
 df_HR_main <- df_HR %>% 
-  mutate(equity_woman = sample(c(TRUE, FALSE), size = n(), prob = c(.5, .5), replace = TRUE),
-         equity_visible_minority = sample(c(TRUE, FALSE), size = n(), prob = c(.25, .75), replace = TRUE),
-         equity_aboriginal = sample(c(TRUE, FALSE), size = n(), prob = c(.10, .90), replace = TRUE),
-         equity_disability = sample(c(TRUE, FALSE), size = n(), prob = c(.15, .85), replace = TRUE)) 
+  mutate(train_security = sample(c(TRUE, FALSE, NA), size = n(), prob = c(.48, .48, .04), replace = TRUE),
+         train_crm = sample(c(TRUE, FALSE, NA), size = n(), prob = c(.75, .24, .01), replace = TRUE),
+         train_qc = sample(c(TRUE, FALSE, NA), size = n(), prob = c(.10, .50, .40), replace = TRUE),
+         train_history = sample(c(TRUE, FALSE, NA), size = n(), prob = c(.98, .01, .01), replace = TRUE)) 
 
 df_HR_main
 
 df_HR_main %>% 
-  group_by(equity_visible_minority, equity_aboriginal) %>% 
+  group_by(train_security, train_qc) %>% 
   tally()
 
-write_csv(df_HR_main, "df_HR_main.csv")
+#write_csv(df_HR_main, "df_HR_main.csv")
 
 ```
 
@@ -416,7 +419,7 @@ write file
 
 ```{r}
   
-write_csv(df_HR_transaction, "df_HR_transaction.csv")
+#write_csv(df_HR_transaction, "df_HR_transaction.csv")
 
 ```
 
