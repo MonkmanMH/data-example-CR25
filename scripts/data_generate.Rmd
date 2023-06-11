@@ -1,15 +1,21 @@
 ---
 title: "hr staff turnover"
-output: word_document
+author: "Martin Monkman"
+date: "`r Sys.Date()`"
+output: html_document
+#output: word_document
 ---
 
 
-```{r setup}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(glue)
 library(lubridate)
 library(magrittr)
+
 ```
 
 
@@ -17,7 +23,7 @@ library(magrittr)
 Scripts to generate a fake HR relational database (or a single Excel file with multiple sheets)
 
 
-## The scenario: 
+# The scenario
 
 The fictional wholesale company, CR25 (for "Classic Rock 25"), has 999 employees. The data files cover the period from 2010-01-01, when the company first opened its doors, through to 2020-01-01. 
 
@@ -129,6 +135,26 @@ df_HR_main |>
 
 ```
 
+need to  have emp_id align with start date--ie ID is assigned in order of arrival
+
+drop emp_id, sort by start date, bind columns
+
+```{r}
+
+df_HR_main <- df_HR_main |> 
+  select(-emp_id) |> 
+  arrange(start_date) |> 
+  cbind(df_HR) |> 
+  relocate(emp_id)
+
+df_HR_main
+
+```
+
+
+
+sentinel values
+
 ```{r}
 
 
@@ -184,7 +210,8 @@ write main
 
 ```{r}
 
-#write_csv(df_HR_main, here::here("data", "df_HR_main.csv"))
+write_csv(df_HR_main, here::here("data", "df_HR_main.csv"))
+
 ```
 
 
@@ -457,7 +484,7 @@ df_HR_transaction_dates |>
 
 ```
 
-# recode to steps
+### recode to steps
 
 ```{r}
 df_HR_transaction_dates <-
@@ -586,6 +613,24 @@ df_HR_age <- df_HR_main |>
 
 ggplot(df_HR_age, aes(x = age_this_year)) +
   geom_bar()
+
+```
+
+```{r}
+# Etta James
+set.seed(8423089)
+
+# Wilson Picket
+set.seed(6345789)
+
+# Marvelettes
+set.seed(45789)
+
+# AC/DC
+set.seed(362436)
+
+# The Time
+set.seed(7779311)
 
 ```
 
